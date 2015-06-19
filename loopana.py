@@ -4,22 +4,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 #simple system data
 #br.no, Rc.nd, Sn.nd, Br.r, Br.x, Sn.load.p, Sn.load.q 
-'''treedisnet=[[1,0,1,0.0922,0.0470,100.00,60.00],
-[2,1,2,0.4930,0.2511,90.00,40.00],
-[3,2,3,0.3660,0.1864,120.00,80.00]
+treedisnet=[[1,0,1,0.0922,0.0470,100.00,60.00],
+[2,1,2,0.04930,0.02511,90.00,40.00],
+[3,2,3,0.03660,0.01864,120.00,80.00]
 ]
 loopdisnet=[
-            [4,1,3,0.3660,0.1864,0.00,0.00]
+            [4,1,3,0.03660,0.01864,0.00,0.00]
             ]
+loopdisnet=[]
 labels={}
 allnodelist=[]
 for i in range(4):
     allnodelist.append(i)
 for i in range(4):
-    labels[i]=str(i)'''
+    labels[i]=str(i)
 #33 buses system data
 #br.no, Rc.nd, Sn.nd, Br.r, Br.x, Sn.load.p, Sn.load.q 
-treedisnet=[[1,0,1,0.0922,0.0470,100.00,60.00],
+'''treedisnet=[[1,0,1,0.0922,0.0470,100.00,60.00],
 [2,1,2,0.4930,0.2511,90.00,40.00],
 [3,2,3,0.3660,0.1864,120.00,80.00],
 [4,3,4,0.3811,0.1941,60.00,30.00],
@@ -59,12 +60,13 @@ loopdisnet=[
             [36,17,32,0.5000,0.5000,0.00,0.00],
             [37,24,28,0.5000,0.5000,0.00,0.00]
              ]
+loopdisnet=[[37,24,28,0.1000,0.1000,0.00,0.00]]
 labels={}
 allnodelist=[]
 for i in range(33):
     allnodelist.append(i)
 for i in range(33):
-    labels[i]=str(i)
+    labels[i]=str(i)'''
 
 #voltage source,-1 denotes the ground nodes
 vsource=[[-1,0,12.66e3,0.0]]
@@ -222,6 +224,8 @@ Bl21=np.mat(Bl21)
 Bl11=np.mat(Bl11)
 il1re0=np.mat(il1re0)
 il1im0=np.mat(il1im0)
+print il1re0
+print il1im0
   
 rht1=-Bl21*rb*Bl11.T*il1re0+Bl21*xb*Bl11.T*il1im0
 rht2=-Bl21*xb*Bl11.T*il1re0-Bl21*rb*Bl11.T*il1im0
@@ -238,6 +242,7 @@ rht=np.vstack((rht1,rht2))
 res=np.linalg.solve(eleA, rht)
 il2re=res[0:nloop]
 il2im=res[nloop:2*nloop]
+print il2re,il2im
 
 vb1re=rb*Bl11.T*il1re0+rb*Bl21.T*il2re-xb*Bl11.T*il1im0-xb*Bl21.T*il2im
 vb1im=xb*Bl11.T*il1re0+xb*Bl21.T*il2re+rb*Bl11.T*il1im0+rb*Bl21.T*il2im
@@ -259,11 +264,13 @@ print np.abs(vb2re+1j*vb2im)/12.66e3
 #print loopedges
 #print treeedges
 
-for iter in range(10):
+for iter in range(20):
     for itemload in loaddict:
         v=vb2re[loaddict[itemload][2]]+1j*vb2im[loaddict[itemload][2]]
-        il1re0[loaddict[itemload][2]]=np.real(np.conj((loaddict[itemload][0]*1e3+1j*1e3*loaddict[itemload][1])/(v)))
-        il1im0[loaddict[itemload][2]]=np.real(np.conj((loaddict[itemload][0]*1e3+1j*1e3*loaddict[itemload][1])/(v)))
+        #print np.abs(v)
+        il1re0[loaddict[itemload][2]]=np.real(np.conj((loaddict[itemload][0]+1j*loaddict[itemload][1])/(v)))*1000
+        il1im0[loaddict[itemload][2]]=np.imag(np.conj((loaddict[itemload][0]+1j*loaddict[itemload][1])/(v)))*1000
+        #print iter,itemload,il1re0[loaddict[itemload][2]],il1im0[loaddict[itemload][2]]
     rht1=-Bl21*rb*Bl11.T*il1re0+Bl21*xb*Bl11.T*il1im0
     rht2=-Bl21*xb*Bl11.T*il1re0-Bl21*rb*Bl11.T*il1im0
     
@@ -276,15 +283,22 @@ for iter in range(10):
     eleA=np.vstack((eleA1,eleA2))
     rht=np.vstack((rht1,rht2))
     #print eleA
-    res=np.linalg.solve(eleA, rht)
+    res=np.linalg.inv(eleA)*rht
+    #res=np.linalg.solve(eleA, rht)
     il2re=res[0:nloop]
     il2im=res[nloop:2*nloop]
-    
+    print iter,il2re,il2im
     vb1re=rb*Bl11.T*il1re0+rb*Bl21.T*il2re-xb*Bl11.T*il1im0-xb*Bl21.T*il2im
     vb1im=xb*Bl11.T*il1re0+xb*Bl21.T*il2re+rb*Bl11.T*il1im0+rb*Bl21.T*il2im
+    vb1res=np.abs(vb1re+1j*vb1im)/12.66e3
+    print iter,vb1res
+    
     vb2re=-Bl13*vb3re-Bl11*vb1re
     vb2im=-Bl13*vb3im-Bl11*vb1im
-print np.abs(vb2re+1j*vb2im)/12.66e3,iter
+vres=np.abs(vb2re+1j*vb2im)/12.66e3
+#print vb1res
+for loaditem in loaddict:
+    print loaditem,vres[loaddict[loaditem][2]]
 #
 #
 #[[ 0.97633684]
